@@ -1,0 +1,80 @@
+version: "3.4"
+
+services:
+  generate_pb_go:
+    image: gen-go
+    build:
+      context: ../
+      target: protoc_gen_go
+      dockerfile: ./developments/proto.Dockerfile
+    volumes:
+      - "../:/app/"
+    entrypoint: /app/developments/gen-proto.sh
+
+  generate_sqlc:
+    image: kjconroy/sqlc:latest
+    volumes:
+      - "../database/:/src/"
+      - "../internal/models/:/models/"
+      - "./sqlc.yaml:/sqlc.yaml"
+    command: ["generate", "--experimental"]
+
+  generate_mock:
+    image: vektra/mockery
+    working_dir: /code
+    volumes:
+      - "../:/code:cached"
+
+    command: [ "--all", "--dir", "internal","--case", "underscore"]
+
+  generate_contract:
+    image: gen-contract
+    build:
+      context: ../
+      target: abi_gen_contract
+      dockerfile: ./developments/abi.Dockerfile
+    volumes:
+      - "../:/app/"
+    entrypoint: /app/developments/gen-abi.sh
+
+  postgres:
+    container_name: postgres_container
+    # build:
+      # context: .
+      # dockerfile: ./postgres.Dockerfile
+    image: postgres:13-alpine
+    environment:
+      PGDATA: /data/postgres
+      POSTGRES_DB: postgres
+      DATABASE_HOST: localhost
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - postgres
+    restart: unless-stopped
+  
+  bdd_test:
+    container_name: bdd_container
+    build:
+      context: ../
+      dockerfile: ./developments/bdd_test.Dockerfile
+    volumes:
+      - "../:/app/"
+    command: ["godog","run"]
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - "../database/migrations:/migrations/"
+    networks:
+      - postgres
+    command: [ "-path","/migrations", "-database", "postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable", "up"]
+
+networks:
+  postgres:
+    driver: bridge
+
+volumes:
+    postgres:

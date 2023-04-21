@@ -1,0 +1,69 @@
+package configs
+
+import (
+	"fmt"
+	"time"
+)
+
+type DBType string
+
+const (
+	Mongo    DBType = "Mongo"
+	Postgres DBType = "Postgres"
+)
+
+type Database struct {
+	Host     string
+	Port     string
+	Database string
+	UserName string
+	Password string
+	SSLMode  string
+
+	MaxConnection int
+	Timeout       time.Duration
+	Type          DBType
+}
+
+func (p *Database) GetConnectionString() string {
+	var prefix string
+	switch p.Type {
+	case Mongo:
+		prefix = "mongo+srv"
+	case Postgres:
+		prefix = "postgres"
+	}
+
+	return fmt.Sprintf("%s://%s:%s@%s/%s?sslmode=%s", prefix, p.UserName, p.Password, p.Host, p.Database, p.SSLMode)
+}
+
+type ConnectionAddr struct {
+	Host    string
+	Port    string
+	Address string
+}
+
+func (p *ConnectionAddr) GetConnectionString() string {
+	if p.Address != "" {
+		return p.Address
+	}
+	return fmt.Sprintf("%s:%s", p.Host, p.Port)
+}
+
+type Storage struct {
+	Region    string
+	AccessKey string
+	SecretKey string
+	Endpoint  string
+	Token     string
+}
+
+type Config struct {
+	NodeID             string
+	SampleSize         int
+	QuorumSize         int
+	DecisionThreshHold int
+
+	Tcp ConnectionAddr
+	DB  Database
+}
