@@ -1,0 +1,7 @@
+docs
+idl/pb
+idl/abi
+transform
+mocks
+logs/*
+data/*
